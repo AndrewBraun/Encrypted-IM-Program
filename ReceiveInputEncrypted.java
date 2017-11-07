@@ -25,7 +25,7 @@ public class ReceiveInputEncrypted extends Thread{
 
 				String incomingMessage = String.toString(in.read());
 				if(incomingMessage == null) continue;
-				if(Integrity == true){
+				if(Integrity){
 					byte[] givenMAC = in.read();
 					byte[] calculatedMAC = macCreator.doFinal(incomingMessage.getBytes());
 					if(!Arrays.equals(givenMAC,calculatedMAC)){
