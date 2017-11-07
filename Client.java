@@ -6,21 +6,43 @@ import java.util.*;
 
 public class Client{
 
-	private boolean Confidentaility;
-	private boolean Integrity;
-	private boolean Authentication;
+	public boolean Confidentaility;
+	public boolean Integrity;
+	public boolean Authentication;
 	private Socket clientSock;
 	private int port = 1000;
+	private Key sharedKey;
+	private Privateey clientPrivateKey;
+	private PublicKey serverPublicKey;
+	private byte[] ClientPasswordHash;
 
 	public Client() throws Exception{
 		try{
 			clientSock = new Socket("127.0.0.1",port);
+			BufferedReader in = new BufferedReader(new FileReader("ClientPasswordHash.txt"));
+			ClientPasswordHash = br.readLine().getBytes();
+			in.close();
+			
+			in = new BufferedReader(new FileReader("ServerPublicKey.txt"));
+			byte[] serverPublicKeyBytes = br.readLine().getBytes();
+			KeyFactory kf = KeyFactory.getInstance("DSA");
+			serverPublicKey = kf.generatePublic(new DESEncodedKeySpec(serverPublicKeyBytes));
+			in.close();
+			
+			in = new BufferedReader(new FileReader("ClientPrivateKey.txt"));
+			byte[] ClientPrivateKeyBytes = br.readLine().getBytes();
+			clientPrivateKey = kf.generatePrivate(new DESEncodedKeySpec(clientPrivateKeyBytes));
+			in.close();
+			
 		} catch (Exception e){
 			throw e;
 		}
 		Confidentaility = false;
 		Integrity = false;
 		Authentication = false;
+		
+		
+		
 	}
 	
 	private boolean checkParameters(DataOutputStream out, DataOutputStream in){
@@ -119,6 +141,18 @@ public class Client{
 		}
 	}
 	
+	private void getPassword(){
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Please enter your password");
+		while(true){
+			byte[] p = scan.nextLine().toBytes();
+			if(Arrays.equals(p,ClientPasswordHash){
+				System.out.println("Correct password!");
+			}
+			else System.out.println("Sorry, incorrect password.");
+		}
+	}
+	
 	private void operate() throws Exception{
 		try{
 			System.out.println("Connected to the server.");
@@ -133,12 +167,23 @@ public class Client{
 				return;
 			}
 			
-			if(Confidentiality){			
-				ReceiveInputEncrypted ri = new ReceiveInputEncrypted(in,Integrity);
+			//Somewhere below here, the system establishes a shared key.
+			
+			
+			
+			
+			
+			
+			
+			//Somewhere above here, the system establishes a shared key.
+			
+			if(Confidentiality){
+				in = new CipherInputStream(inputStream,key);
+				ReceiveInputEncrypted ri = new ReceiveInputEncrypted(in,Integrity,key);
 				ri.start();
 			}
 			else{
-				ReceiveInput ri = new ReceiveInput(in,Integrity);
+				ReceiveInput ri = new ReceiveInput(in,Integrity,key);
 				ri.start();
 			}
 			
@@ -165,6 +210,10 @@ public class Client{
 			Client c = new Client();
 			
 			c.getParameters();	
+			
+			if(c.Authentication){
+				c.checkPassword();
+			}
 			
 			c.operate();
 		} catch(Exception e){
