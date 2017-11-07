@@ -6,16 +6,35 @@ import java.util.*;
 
 public class Server{
 
-	private boolean Confidentaility;
-	private boolean Integrity;
-	private boolean Authentication;
+	public boolean Confidentaility;
+	public boolean Integrity;
+	public boolean Authentication;
 	private ServerSocket serverSocket;
 	private int port = 1000;
 	private Key sharedKey;
+	private Key clientPublicKey;
+	private Key serverPrivateKey;
+	private byte[] ServerPasswordHash;
 
 	public Server() throws Exception{
 		try{
 			serverSocket = new ServerSocket(port);
+			
+			BufferedReader in = new BufferedReader(new FileReader("ServerPasswordHash.txt"));
+			ServerPasswordHash = br.readLine().getBytes();
+			in.close();
+			
+			in = new BufferedReader(new FileReader("ClientPublicKey.txt"));
+			byte[] clientPublicKeyBytes = br.readLine().getBytes();
+			KeyFactory kf = KeyFactory.getInstance("DSA");
+			clientPublicKey = kf.generatePublic(new DESEncodedKeySpec(clientPublicKeyBytes));
+			in.close();
+			
+			in = new BufferedReader(new FileReader("ServerPrivateKey.txt"));
+			byte[] ServerPrivateKeyBytes = br.readLine().getBytes();
+			serverPrivateKey = kf.generatePrivate(new DESEncodedKeySpec(serverPrivateKeyBytes));
+			in.close();
+			
 		} catch (Exception e){
 			throw e;
 		}
@@ -114,6 +133,18 @@ public class Server{
 		}
 	}
 	
+	private void getPassword(){
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Please enter your password");
+		while(true){
+			byte[] p = scan.nextLine().toBytes();
+			if(Arrays.equals(p,ServerPasswordHash){
+				System.out.println("Correct password!");
+			}
+			else System.out.println("Sorry, incorrect password.");
+		}
+	}
+	
 	private void operate() throws Exception{
 		try{
 			Socket sock = serverSocket.accept();
@@ -129,6 +160,19 @@ public class Server{
 				return;
 			}
 			
+			//Somewhere below here, the system establishes a shared key.
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			//Somewhere above here, the system establishes a shared key.
+			
+			
 			/*
 			while(true){
 				String message = scan.nextLine();
@@ -142,7 +186,8 @@ public class Server{
 			}
 			*/
 			
-			if(Confidentiality){			
+			if(Confidentiality){
+				in = new CipherInputStream(inputStream,key);
 				ReceiveInputEncrypted ri = new ReceiveInputEncrypted(in,Integrity);
 				ri.start();
 			}
@@ -172,7 +217,13 @@ public class Server{
 			Server server = new Server();
 			
 			server.getParameters();
-			server.operate();
+			
+			if(server.Authentication){
+				server.checkPassword();
+			}
+			while(true){
+				server.operate();
+			}
 		} catch (Exception e){
 			System.out.println("Something went wrong.");
 		}
