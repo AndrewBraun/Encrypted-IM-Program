@@ -22,11 +22,12 @@ public class ReceiveInput extends Thread{
 		this.key = key;
 		try{
 			decryptCipher = Cipher.getInstance("AES");
-			decryptCipher.init(Cipher.DECRYPT_MODE,key);
+			decryptCipher.init(Cipher.DECRYPT_MODE,this.key);
 			this.macCreator = Mac.getInstance("HmacSHA256");
 			this.macCreator.init(key);
 		} catch (Exception e){
 			System.out.println("Something went wrong in ReceiveInput constructor.");
+			System.out.println(e);
 		}
 	}
 	
@@ -50,8 +51,13 @@ public class ReceiveInput extends Thread{
 				System.out.println(incomingMessage);
 
 			}
-		} catch (Exception e){
-			System.out.println("Something went wrong in ReceiveInput.");
+		}
+		catch (SocketException se){
+			System.out.println("Client has disconnected.");
+		}
+		catch (Exception e){
+			System.out.println("Something went wrong in ReceiveInput operate.");
+			System.out.println(e);
 		}
 	}
 }
