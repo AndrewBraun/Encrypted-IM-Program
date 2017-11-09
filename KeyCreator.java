@@ -23,7 +23,7 @@ public class KeyCreator{
 			out.write(ServerPasswordHash);
 			out.close();
 			
-			KeyPairGenerator kpg = KeyPairGenerator.getInstance("DSA");
+			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(512);
 			
 			KeyPair KP = kpg.generateKeyPair();
