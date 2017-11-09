@@ -5,6 +5,7 @@ import java.security.spec.*;
 import java.net.*;
 import java.util.*;
 import javax.crypto.*;
+import javax.crypto.spec.*;
 import java.nio.file.*;
 
 public class Server{
@@ -33,7 +34,7 @@ public class Server{
 			//byte[] clientPublicKeyBytes = in.readLine().getBytes();
 			path = Paths.get("ClientPublicKey.txt");
 			byte[] clientPublicKeyBytes = Files.readAllBytes(path);
-			KeyFactory kf = KeyFactory.getInstance("DSA");
+			KeyFactory kf = KeyFactory.getInstance("RSA");
 			X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(clientPublicKeyBytes);
 			clientPublicKey = kf.generatePublic(pubKeySpec);
 
@@ -189,12 +190,22 @@ public class Server{
 			}
 			
 
-			byte[] sharedKeyEncrypted = in.readUTF().getBytes();
-			Cipher dsaCipher = Cipher.getInstance("DES");
-			dsaCipher.init(Cipher.UNWRAP_MODE,serverPrivateKey);
-			sharedKey = (SecretKey) dsaCipher.unwrap(sharedKeyEncrypted, "AES",Cipher.SECRET_KEY);
+			byte[] sharedKeyBytes = new byte[16];
+			in.read(sharedKeyBytes,0,16);
+			
+			/*
+			Cipher rsaCipher = Cipher.getInstance("RSA");
+			rsaCipher.init(Cipher.DECRYPT_MODE,clientPublicKey);
+			byte[] sharedKeyBytes = rsaCipher.doFinal(sharedKeyEncrypted);
+			*/
+			sharedKey = new SecretKeySpec(sharedKeyBytes, 0, sharedKeyBytes.length, "AES");
 			
 			
+			/*
+			SecretKeySpec secretKeySpec = new SecretKeySpec(sharedKeyBytes, "AES");
+			SecretKeyFactory skf = SecretKeyFactory.getInstance("AES");
+			sharedKey = skf.generateSecret(secretKeySpec);
+			*/
 			
 			/*
 			while(true){
@@ -214,23 +225,30 @@ public class Server{
 			Cipher outputCipher = Cipher.getInstance("AES");
 			outputCipher.init(Cipher.ENCRYPT_MODE,sharedKey);
 			
+			
+			
 			Mac macCreator = Mac.getInstance("HmacSHA256");
 			macCreator.init(sharedKey);
 			
 			while(true){
 				String message = scan.nextLine();
+				message = "Server: " + message;
 				if(message == null) continue;
 				if(Confidentiality){
 					message = new String(outputCipher.doFinal(message.getBytes()));
 				}
-				out.write(message.getBytes());
+				out.writeUTF(message);
 				if(Integrity){
 					byte[] calculatedMAC = macCreator.doFinal(message.getBytes());
-					out.write(calculatedMAC);
+					out.writeUTF(new String(calculatedMAC));
 				}
 			}
 			
-		} catch (Exception e){
+		} 
+		catch (SocketException se){
+			return;
+		}
+		catch (Exception e){
 			System.out.println("Something went wrong in operate.");
 			System.out.println(e);
 		}
