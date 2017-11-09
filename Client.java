@@ -6,6 +6,7 @@ import java.net.*;
 import java.util.*;
 import javax.crypto.*;
 import java.nio.file.*;
+import javax.crypto.spec.*;
 
 public class Client{
 
@@ -28,7 +29,7 @@ public class Client{
 
 			path = Paths.get("ServerPublicKey.txt");
 			byte[] serverPublicKeyBytes = Files.readAllBytes(path);
-			KeyFactory kf = KeyFactory.getInstance("DSA");
+			KeyFactory kf = KeyFactory.getInstance("RSA");
 			X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(serverPublicKeyBytes);
 			serverPublicKey = kf.generatePublic(pubKeySpec);
 
@@ -189,38 +190,43 @@ public class Client{
 			
 			//Somewhere below here, the system establishes a shared key.
 			KeyGenerator kg = KeyGenerator.getInstance("AES");
-			kg.init(256);
+			kg.init(128);
 			sharedKey = kg.generateKey();
-	
-			Cipher dsaCipher = Cipher.getInstance("DES");
-			dsaCipher.init(Cipher.WRAP_MODE,serverPublicKey);
-			byte[] sharedKeyEncrypted = dsaCipher.doFinal(sharedKey.getEncoded());
-			out.writeUTF(new String(sharedKeyEncrypted));
 			
+			byte[] sharedKeyBytes = sharedKey.getEncoded();
+			/*
+			Cipher rsaCipher = Cipher.getInstance("RSA");
+			
+			rsaCipher.init(Cipher.ENCRYPT_MODE,clientPrivateKey);
+			
+			byte[] sharedKeyEncrypted = rsaCipher.doFinal(sharedKey.getEncoded());
+			*/
+			out.write(sharedKeyBytes,0,sharedKeyBytes.length);
 			
 			Mac macCreator = Mac.getInstance("HmacSHA256");
 			macCreator.init(sharedKey);
 			
-			
+			Cipher outputCipher = Cipher.getInstance("AES");
+			outputCipher.init(Cipher.ENCRYPT_MODE,sharedKey);
 			
 			//Somewhere above here, the system establishes a shared key.
 			
 			ReceiveInput ri = new ReceiveInput(in,Confidentiality,Integrity, sharedKey);
 			ri.start();
 			
-			Cipher outputCipher = Cipher.getInstance("AES");
-			outputCipher.init(Cipher.ENCRYPT_MODE,sharedKey);
+
 			
 			while(true){
 				String message = scan.nextLine();
+				message = "Client: "+ message;
 				if(message == null) continue;
 				if(Confidentiality){
 					message = new String(outputCipher.doFinal(message.getBytes()));
 				}
-				out.write(message.getBytes());
+				out.writeUTF(message);
 				if(Integrity){
 					byte[] calculatedMAC = macCreator.doFinal(message.getBytes());
-					out.write(calculatedMAC);
+					out.writeUTF(new String(calculatedMAC));
 				}
 			}
 		} catch (Exception e){
