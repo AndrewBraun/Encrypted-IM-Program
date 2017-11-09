@@ -1,8 +1,11 @@
 import java.io.*;
 import java.lang.*;
 import java.security.*;
+import java.security.spec.*;
 import java.net.*;
 import java.util.*;
+import javax.crypto.*;
+import java.nio.file.*;
 
 public class KeyCreator{
 	
@@ -16,32 +19,41 @@ public class KeyCreator{
 			out.close();
 			String ServerPassword = "PASSWORD";
 			byte[] ServerPasswordHash = md.digest(ServerPassword.getBytes());
-			out = new FileOutputStream("ServerPasswordHash");
+			out = new FileOutputStream("ServerPasswordHash.txt");
 			out.write(ServerPasswordHash);
 			out.close();
 			
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("DSA");
-			SecureRandom randy = new SecureRandom();
-			kpg.initialize(1024,randy);
+			kpg.initialize(512);
+			
 			KeyPair KP = kpg.generateKeyPair();
 			PrivateKey ServerPrivateKey = KP.getPrivate();
 			PublicKey ServerPublicKey = KP.getPublic();
+			byte[] ServerPrivateKeyBytes = ServerPrivateKey.getEncoded();
+			byte[] ServerPublicKeyBytes = ServerPublicKey.getEncoded();
+			
 			out = new FileOutputStream("ServerPrivateKey.txt");
-			out.write(ServerPrivateKey.getEncoded());
+			out.write(ServerPrivateKeyBytes);
 			out.close();
+			
 			out = new FileOutputStream("ServerPublicKey.txt");
-			out.write(ServerPublicKey.getEncoded());
+			out.write(ServerPublicKeyBytes);
 			out.close();
 			
 			KP = kpg.generateKeyPair();
 			PrivateKey ClientPrivateKey = KP.getPrivate();
 			PublicKey ClientPublicKey = KP.getPublic();
+			byte[] ClientPrivateKeyBytes = ClientPrivateKey.getEncoded();
+			byte[] ClientPublicKeyBytes = ClientPublicKey.getEncoded();
+			
 			out = new FileOutputStream("ClientPrivateKey.txt");
-			out.write(ClientPrivateKey.getEncoded());
+			out.write(ClientPrivateKeyBytes);
 			out.close();
-			out = new FileOutputStream("ClientPublicKey");
-			out.write(ClientPublicKey.getEncoded());
+			
+			out = new FileOutputStream("ClientPublicKey.txt");
+			out.write(ClientPublicKeyBytes);
 			out.close();
+			
 		} catch (Exception e){
 			System.out.println(e);
 		}
