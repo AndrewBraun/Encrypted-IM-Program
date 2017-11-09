@@ -1,53 +1,54 @@
 import java.io.*;
 import java.lang.*;
 import java.security.*;
+import java.security.spec.*;
 import java.net.*;
 import java.util.*;
+import javax.crypto.*;
+import java.nio.file.*;
 
 public class Client{
 
-	public boolean Confidentaility;
+	public boolean Confidentiality;
 	public boolean Integrity;
 	public boolean Authentication;
 	private Socket clientSock;
 	private int port = 1000;
-	private Key sharedKey;
-	private Privateey clientPrivateKey;
+	private SecretKey sharedKey;
+	private PrivateKey clientPrivateKey;
 	private PublicKey serverPublicKey;
 	private byte[] ClientPasswordHash;
 
-	public Client() throws Exception{
+	public Client(){
 		try{
 			clientSock = new Socket("127.0.0.1",port);
-			BufferedReader in = new BufferedReader(new FileReader("ClientPasswordHash.txt"));
-			ClientPasswordHash = br.readLine().getBytes();
-			in.close();
 			
-			in = new BufferedReader(new FileReader("ServerPublicKey.txt"));
-			byte[] serverPublicKeyBytes = br.readLine().getBytes();
+			Path path = Paths.get("ClientPasswordHash.txt");
+			ClientPasswordHash = Files.readAllBytes(path);
+
+			path = Paths.get("ServerPublicKey.txt");
+			byte[] serverPublicKeyBytes = Files.readAllBytes(path);
 			KeyFactory kf = KeyFactory.getInstance("DSA");
-			serverPublicKey = kf.generatePublic(new DESEncodedKeySpec(serverPublicKeyBytes));
-			in.close();
-			
-			in = new BufferedReader(new FileReader("ClientPrivateKey.txt"));
-			byte[] ClientPrivateKeyBytes = br.readLine().getBytes();
-			clientPrivateKey = kf.generatePrivate(new DESEncodedKeySpec(clientPrivateKeyBytes));
-			in.close();
+			X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(serverPublicKeyBytes);
+			serverPublicKey = kf.generatePublic(pubKeySpec);
+
+			path = Paths.get("ClientPrivateKey.txt");
+			byte[] ClientPrivateKeyBytes = Files.readAllBytes(path);
+			PKCS8EncodedKeySpec privKeySpec = new PKCS8EncodedKeySpec(ClientPrivateKeyBytes);
+			clientPrivateKey = kf.generatePrivate(privKeySpec);
 			
 		} catch (Exception e){
-			throw e;
+			System.out.println("Something went wrong in the constructor.");
+			System.out.println(e);
 		}
-		Confidentaility = false;
+		Confidentiality = false;
 		Integrity = false;
-		Authentication = false;
-		
-		
-		
+		Authentication = false;	
 	}
 	
-	private boolean checkParameters(DataOutputStream out, DataOutputStream in){
+	private boolean checkParameters(DataOutputStream out, DataInputStream in){
 		int i = 0;
-		if(Confidentaility){
+		if(Confidentiality){
 			i = i+4;
 		}
 		if(Integrity){
@@ -56,33 +57,40 @@ public class Client{
 		if(Authentication){
 			i++;
 		}
-		int j = in.readInt();
-		if(j==i){
-			out.writeBoolean(true);
-			return true;
+		try{
+			int j = in.readInt();
+			if(j==i){
+				out.writeBoolean(true);
+				return true;
+			}
+			else{
+				out.writeBoolean(false);
+				return false;
+			}
+		} catch (Exception e){
+			System.out.println("Something went wrong in checkParameters.");
+			System.out.println(e);
 		}
-		else{
-			out.writeBoolean(false);
-			return false;
-		}
+		return false;
 	}
 	
-	private void getParmeters(){
+	private void getParameters(){
 		
 		Scanner scan = new Scanner(System.in);
 		System.out.println("Hi! Please enter in which security options you want to use.");
-		System.out.println("Do you want Confidentialty? (type y/n)");
+		System.out.println("Do you want Confidentiality? (type y/n)");
 		while(true){
 			try{
-				byte c = scan.nextByte();
-				if(String.toString(c) == "y" || String.toString(c) == "Y"){
+				String c = scan.next();
+				char cChar = c.charAt(0);
+				if(cChar=='y'|| cChar=='Y'){
 					System.out.println("Confidentiality set to on.");
-					Confidentaility = true;
+					Confidentiality = true;
 					break;
 				}
-				else if(String.toString(c) == "n" || String.toString(c) == "N"){
+				else if(cChar=='n' || cChar=='N'){
 					System.out.println("Confidentiality set to off.");
-					Confidentaility = false;
+					Confidentiality = false;
 					break;
 				}
 				else{
@@ -97,15 +105,16 @@ public class Client{
 		System.out.println("Do you want Integrity? (type y/n)");
 		while(true){
 			try{
-				byte c = scan.nextByte();
-				if(String.toString(c) == "y" || String.toString(c) == "Y"){
+				String c = scan.next();
+				char cChar = c.charAt(0);
+				if(cChar=='y'|| cChar =='Y'){
 					System.out.println("Integrity set to on.");
 					Integrity = true;
 					break;
 				}
-				else if(String.toString(c) == "n" || String.toString(c) == "N"){
+				else if(cChar=='n' || cChar=='N'){
 					System.out.println("Integrity set to off.");
-					Confidentaility = false;
+					Confidentiality = false;
 					break;
 				}
 				else{
@@ -120,13 +129,14 @@ public class Client{
 		System.out.println("Do you want Authentication? (type y/n)");
 		while(true){
 			try{
-				byte c = scan.nextByte();
-				if(String.toString(c) == "y" || String.toString(c) == "Y"){
+				String c = scan.next();
+				char cChar = c.charAt(0);
+				if(cChar=='y'|| cChar=='Y'){
 					System.out.println("Authentication set to on.");
 					Authentication = true;
 					break;
 				}
-				else if(String.toString(c) == "n" || String.toString(c) == "N"){
+				else if(cChar=='n' || cChar=='N'){
 					System.out.println("Authentication set to off.");
 					Authentication = false;
 					break;
@@ -141,19 +151,29 @@ public class Client{
 		}
 	}
 	
-	private void getPassword(){
+	private void checkPassword(){
 		Scanner scan = new Scanner(System.in);
 		System.out.println("Please enter your password");
-		while(true){
-			byte[] p = scan.nextLine().toBytes();
-			if(Arrays.equals(p,ClientPasswordHash){
-				System.out.println("Correct password!");
+		try{
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			while(true){
+				//Need to hash the incoming password
+				byte[] p = scan.nextLine().getBytes();
+				byte[] pHash = md.digest(p);
+				if(Arrays.equals(pHash,ClientPasswordHash)){
+					System.out.println("Correct password!");
+					break;
+				}
+				else System.out.println("Sorry, incorrect password.");
 			}
-			else System.out.println("Sorry, incorrect password.");
+		} catch (Exception e){
+			System.out.println("Something went wrong in checkPassword.");
+			System.out.println(e);
+			return;
 		}
 	}
 	
-	private void operate() throws Exception{
+	private void operate(){
 		try{
 			System.out.println("Connected to the server.");
 			InputStream inputstream = clientSock.getInputStream();
@@ -162,45 +182,50 @@ public class Client{
 			DataOutputStream out = new DataOutputStream(outputstream);
 			Scanner scan = new Scanner(System.in);
 			
-			if(checkParameters(out,in)==False){
+			if(checkParameters(out,in)==false){
 				System.out.println("Error: Server has different parameters!");
 				return;
 			}
 			
 			//Somewhere below here, the system establishes a shared key.
+			KeyGenerator kg = KeyGenerator.getInstance("AES");
+			kg.init(256);
+			sharedKey = kg.generateKey();
+	
+			Cipher dsaCipher = Cipher.getInstance("DES");
+			dsaCipher.init(Cipher.WRAP_MODE,serverPublicKey);
+			byte[] sharedKeyEncrypted = dsaCipher.doFinal(sharedKey.getEncoded());
+			out.writeUTF(new String(sharedKeyEncrypted));
 			
 			
-			
-			
+			Mac macCreator = Mac.getInstance("HmacSHA256");
+			macCreator.init(sharedKey);
 			
 			
 			
 			//Somewhere above here, the system establishes a shared key.
 			
-			if(Confidentiality){
-				in = new CipherInputStream(inputStream,key);
-				ReceiveInputEncrypted ri = new ReceiveInputEncrypted(in,Integrity,key);
-				ri.start();
-			}
-			else{
-				ReceiveInput ri = new ReceiveInput(in,Integrity,key);
-				ri.start();
-			}
+			ReceiveInput ri = new ReceiveInput(in,Confidentiality,Integrity, sharedKey);
+			ri.start();
 			
-			macCreator = Mac.getInstance("HmacSHA256");
-			macCreator.init(key);
+			Cipher outputCipher = Cipher.getInstance("AES");
+			outputCipher.init(Cipher.ENCRYPT_MODE,sharedKey);
 			
 			while(true){
 				String message = scan.nextLine();
 				if(message == null) continue;
-				out.write(message.toBytes());
+				if(Confidentiality){
+					message = new String(outputCipher.doFinal(message.getBytes()));
+				}
+				out.write(message.getBytes());
 				if(Integrity){
 					byte[] calculatedMAC = macCreator.doFinal(message.getBytes());
 					out.write(calculatedMAC);
 				}
 			}
 		} catch (Exception e){
-			throw e;
+			System.out.println("Something went wrong in operate.");
+			System.out.println(e);
 		}
 	}
 	
